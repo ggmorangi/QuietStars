@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Stars</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;1,400;1,500&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0b12;
+    --bg2:#12131c;
+    --gold:#c9a227;
+    --teal:#5a8a90;
+    --rust:#a8562e;
+    --cream:#ede6d6;
+    --muted:#b3b1c0;
+    --line: rgba(237,230,214,0.10);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--cream);font-family:'IBM Plex Sans',sans-serif;overflow-x:hidden;height:100%;}
+  ::selection{background:var(--gold);color:#0a0b12;}
+
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+
+  /* faint ambient stars in background */
+  #ambient{position:fixed; inset:0; z-index:0; pointer-events:none;}
+  #ambient span{
+    position:absolute;
+    width:1.5px; height:1.5px;
+    background:rgba(237,230,214,0.5);
+    border-radius:50%;
+    animation:twinkle 4s ease-in-out infinite;
+  }
+  @keyframes twinkle{
+    0%,100%{opacity:0.55;}
+    50%{opacity:1;}
+  }
+
+  /* ---------- DOOR SCREEN ---------- */
+  #doorScreen{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:32px;
+    text-align:center;
+    position:relative;
+    z-index:2;
+    transition:opacity 0.9s ease, filter 0.9s ease;
+  }
+  #doorScreen.hidden{opacity:0; filter:blur(6px); pointer-events:none; position:absolute; inset:0;}
+
+  .door{
+    width:110px;
+    height:175px;
+    border:1px solid rgba(201,162,39,0.6);
+    border-radius:55px 55px 6px 6px;
+    position:relative;
+    cursor:pointer;
+    background:radial-gradient(ellipse at 50% 30%, rgba(201,162,39,0.06), transparent 70%);
+    box-shadow:0 0 40px -10px rgba(201,162,39,0.15);
+    transition:transform 0.4s ease, box-shadow 0.4s ease;
+  }
+  .door:hover{transform:translateY(-4px); box-shadow:0 0 60px -8px rgba(201,162,39,0.3);}
+  .door::after{
+    content:'';
+    position:absolute;
+    right:14px; top:50%;
+    width:5px; height:5px;
+    border-radius:50%;
+    background:var(--gold);
+    transform:translateY(-50%);
+    box-shadow:0 0 10px 2px rgba(201,162,39,0.7);
+  }
+  .doorlabel{
+    margin-top:22px;
+    font-family:'Fraunces',serif;
+    font-style:italic;
+    font-size:19px;
+  }
+  .doorsub{margin-top:10px; font-size:14px; color:var(--muted); max-width:320px;}
+  h1.title{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:clamp(30px,5vw,46px);
+    margin:14px 0 6px;
+    letter-spacing:-0.01em;
+  }
+  .tagline{color:var(--muted); font-size:15px; max-width:420px; line-height:1.5; margin-bottom:40px;}
+
+  /* ---------- FIELD SCREEN ---------- */
+  #fieldScreen{
+    min-height:100vh;
+    position:relative;
+    z-index:1;
+    opacity:0;
+    transition:opacity 1s ease 0.15s;
+    pointer-events:none;
+  }
+  #fieldScreen.visible{opacity:1; pointer-events:auto;}
+
+  .fieldHeader{
+    position:absolute;
+    top:14px; left:0; right:0;
+    text-align:center;
+    z-index:5;
+    pointer-events:none;
+  }
+  .fieldHeader h2{
+    font-family:'Fraunces',serif;
+    font-style:italic;
+    font-weight:500;
+    font-size:clamp(19px,2.6vw,23px);
+    margin:8px 0 0;
+    color:var(--gold);
+  }
+
+  .skyToggle{
+    margin-top:10px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.04em;
+    color:var(--gold);
+    cursor:pointer;
+    pointer-events:auto;
+    display:inline-block;
+    border-bottom:1px solid rgba(201,162,39,0.4);
+    padding-bottom:2px;
+    opacity:0.85;
+    transition:color 0.2s ease, opacity 0.2s ease;
+  }
+  .skyToggle:hover{color:#ffffff; opacity:1;}
+
+  #skyWrap{
+    position:relative;
+    width:100%;
+    height:100vh;
+    max-height:900px;
+  }
+
+  svg#lines{position:absolute; inset:0; width:100%; height:100%;}
+  svg#lines line{
+    stroke:rgba(201,162,39,0.18);
+    stroke-width:1;
+    transition:stroke 0.3s ease, stroke-width 0.3s ease, filter 0.3s ease;
+  }
+  svg#lines line.activeLine{
+    stroke:var(--gold);
+    stroke-width:1.8;
+    filter:drop-shadow(0 0 5px rgba(201,162,39,0.9));
+    stroke-dasharray:10 26;
+    animation:travelOut 1.1s linear infinite;
+  }
+  @keyframes travelOut{
+    from{stroke-dashoffset:0;}
+    to{stroke-dashoffset:72;}
+  }
+
+  .star{
+    position:absolute;
+    cursor:pointer;
+    z-index:3;
+    transition:left 0.9s cubic-bezier(.55,.05,.55,.95), top 0.9s cubic-bezier(.55,.05,.55,.95), opacity 0.9s ease;
+  }
+  .star.dropping{
+    opacity:0;
+  }
+  .star.dropping .starDot{
+    transform:translate(-50%,-50%) scale(0.3);
+    filter:drop-shadow(0 0 10px rgba(201,162,39,0.9));
+  }
+  .starDot{
+    position:absolute;
+    left:0; top:0;
+    transform:translate(-50%,-50%);
+    width:18px; height:18px;
+    background:#ffffff;
+    clip-path:polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+    filter:drop-shadow(0 0 6px rgba(255,255,255,0.8));
+    transition:filter 0.3s ease, background 0.3s ease;
+    animation:sparkle 3.4s ease-in-out infinite;
+  }
+  @keyframes sparkle{
+    0%,100%{opacity:0.6; transform:translate(-50%,-50%) scale(0.85);}
+    50%{opacity:1; transform:translate(-50%,-50%) scale(1.05);}
+  }
+  .star:hover .starDot, .star.active .starDot{
+    background:var(--gold);
+    filter:drop-shadow(0 0 12px rgba(201,162,39,1));
+    transform:translate(-50%,-50%) scale(1.4);
+    animation:none;
+    opacity:1;
+  }
+  .starName{
+    position:absolute;
+    left:0; top:24px;
+    transform:translateX(-50%);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    letter-spacing:0.02em;
+    color:var(--cream);
+    white-space:nowrap;
+    opacity:0;
+    text-shadow:0 1px 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9);
+    transition:color 0.3s ease, opacity 0.6s ease;
+  }
+  .starName.revealed{opacity:0.95;}
+  .star:hover .starName, .star.active .starName{color:var(--gold); opacity:1;}
+
+  .centerStar{
+    position:absolute;
+    inset:0;
+    z-index:4;
+    text-align:center;
+    pointer-events:none;
+  }
+  .centerDot{
+    position:absolute;
+    left:50%; top:50%;
+    transform:translate(-50%,-50%);
+    width:26px; height:26px;
+    border-radius:50%;
+    background:radial-gradient(circle, #ffffff, var(--gold) 55%, rgba(201,162,39,0.4) 100%);
+    box-shadow:0 0 70px 22px rgba(201,162,39,0.55), 0 0 22px 6px rgba(255,255,255,0.6);
+    animation:centerPulse 3.2s ease-in-out infinite;
+  }
+  @keyframes centerPulse{
+    0%,100%{transform:translate(-50%,-50%) scale(1); box-shadow:0 0 70px 22px rgba(201,162,39,0.55), 0 0 22px 6px rgba(255,255,255,0.6);}
+    50%{transform:translate(-50%,-50%) scale(1.12); box-shadow:0 0 90px 30px rgba(201,162,39,0.7), 0 0 28px 8px rgba(255,255,255,0.75);}
+  }
+  .centerLabel{
+    position:absolute;
+    left:50%; top:calc(50% + 30px);
+    transform:translateX(-50%);
+    font-family:'Fraunces',serif;
+    font-style:italic;
+    font-size:17px;
+    color:#ffffff;
+    letter-spacing:0.02em;
+    text-shadow:0 1px 8px rgba(0,0,0,0.85);
+    opacity:1;
+    white-space:nowrap;
+  }
+
+  /* ---------- READING PANEL ---------- */
+  #panel{
+    position:fixed;
+    bottom:0; left:0; right:0;
+    background:var(--bg2);
+    border-top:1px solid var(--line);
+    padding:28px 24px 32px;
+    transform:translateY(100%);
+    transition:transform 0.5s ease;
+    z-index:20;
+    max-height:56vh;
+    overflow-y:auto;
+  }
+  #panel.open{transform:translateY(0);}
+  .panelInner{max-width:560px; margin:0 auto;}
+  .panelClose{
+    background:none; border:none; color:var(--muted);
+    font-family:'IBM Plex Mono',monospace; font-size:11px;
+    cursor:pointer; float:right; letter-spacing:0.04em;
+  }
+  .panelClose:hover{color:var(--cream);}
+  .panelTitle{
+    font-family:'Fraunces',serif;
+    font-style:italic;
+    font-size:26px;
+    color:#ffffff;
+    margin:0 0 16px;
+  }
+  .panelVoice{font-size:17px; line-height:1.75; color:#ffffff; margin-bottom:18px;}
+  .lensPointer{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.03em;
+    color:var(--gold);
+    opacity:0.85;
+    margin:24px 0 10px;
+  }
+  .lensStrip{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px;}
+  .lensChip{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    padding:6px 12px;
+    border-radius:20px;
+    background:none;
+    border:1px solid var(--line);
+    color:var(--muted);
+    cursor:pointer;
+    white-space:nowrap;
+    transition:background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  }
+  .lensChip.ordinary{border-color:rgba(168,86,46,0.4); color:var(--rust);}
+  .lensChip.scientific{border-color:rgba(90,138,144,0.4); color:var(--teal);}
+  .lensChip.spiritual{border-color:rgba(201,162,39,0.4); color:var(--gold);}
+  .lensChip.quantum{border-color:rgba(154,143,212,0.4); color:#9a8fd4;}
+  .lensChip.ordinary.active{background:rgba(168,86,46,0.18); color:#ffffff;}
+  .lensChip.scientific.active{background:rgba(90,138,144,0.18); color:#ffffff;}
+  .lensChip.spiritual.active{background:rgba(201,162,39,0.18); color:#ffffff;}
+  .lensChip.quantum.active{background:rgba(154,143,212,0.18); color:#ffffff;}
+  .lensAnswer{
+    font-size:15.5px;
+    line-height:1.7;
+    color:#ffffff;
+    margin-top:18px;
+    min-height:20px;
+  }
+
+  @media (min-width:900px){
+    #panel{
+      top:50%; left:50%; right:auto; bottom:auto;
+      transform:translate(-50%,-45%);
+      width:min(560px, 90vw);
+      max-height:70vh;
+      border:1px solid var(--line);
+      border-radius:8px;
+      box-shadow:0 30px 80px -20px rgba(0,0,0,0.7);
+      opacity:0;
+      pointer-events:none;
+      transition:opacity 0.35s ease, transform 0.35s ease;
+    }
+    #panel.open{
+      opacity:1;
+      transform:translate(-50%,-50%);
+      pointer-events:auto;
+    }
+  }
+
+  /* ---------- ANSWER PAGE ---------- */
+  #answerScreen{
+    position:fixed;
+    inset:0;
+    background:var(--bg);
+    overflow-y:auto;
+    z-index:30;
+    padding:56px 24px 80px;
+    opacity:0;
+    transform:translateY(16px);
+    pointer-events:none;
+    transition:opacity 0.45s ease, transform 0.45s ease;
+  }
+  #answerScreen.open{
+    opacity:1;
+    transform:translateY(0);
+    pointer-events:auto;
+  }
+  .answerBack{
+    background:none;
+    border:none;
+    color:var(--muted);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:0.05em;
+    cursor:pointer;
+    margin-bottom:44px;
+  }
+  .answerBack:hover{color:var(--cream);}
+  .answerInner{max-width:560px; margin:0 auto;}
+  .answerTitle{
+    font-family:'Fraunces',serif;
+    font-style:italic;
+    font-size:clamp(28px,4vw,36px);
+    color:#ffffff;
+    margin:0 0 28px;
+  }
+  .answerVoice{
+    font-size:17px;
+    line-height:1.8;
+    color:#ffffff;
+  }
+
+  .landingChatWrap{
+    margin-top:36px;
+    padding-top:28px;
+    border-top:1px solid var(--line);
+  }
+  .landingChatWrap .chatMessages{max-height:none;}
+
+  .chatLabel{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:16px;
+  }
+  .chatMessages{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    margin-bottom:18px;
+  }
+  .chatMsg{
+    font-size:15px;
+    line-height:1.6;
+    padding:12px 15px;
+    border-radius:8px;
+    max-width:88%;
+  }
+  .chatMsg.user{
+    align-self:flex-end;
+    background:rgba(201,162,39,0.14);
+    color:var(--cream);
+    border:1px solid rgba(201,162,39,0.25);
+  }
+  .chatMsg.assistant{
+    align-self:flex-start;
+    background:var(--bg2);
+    color:#ffffff;
+    border:1px solid var(--line);
+  }
+  .chatMsg.thinking{
+    color:var(--muted);
+    font-style:italic;
+  }
+  .chatInputRow{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .chatInput{
+    width:100%;
+    background:var(--bg2);
+    border:1px solid var(--line);
+    border-radius:6px;
+    color:var(--cream);
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:14.5px;
+    padding:12px 14px;
+    resize:none;
+  }
+  .chatInput:focus{outline:none; border-color:var(--gold);}
+  .chatSend{
+    align-self:flex-end;
+    background:var(--gold);
+    color:#0a0b12;
+    border:none;
+    border-radius:6px;
+    padding:9px 22px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:0.04em;
+    cursor:pointer;
+    transition:opacity 0.2s ease;
+  }
+  .chatSend:hover{opacity:0.85;}
+  .chatSend:disabled{opacity:0.4; cursor:default;}
+
+  @media (max-width:640px){
+    .starName{font-size:9.5px;}
+    .fieldHeader h2{font-size:16px;}
+    .answerTitle{font-size:24px;}
+    .answerVoice{font-size:14.5px; line-height:1.65;}
+    .lensAnswer{font-size:13.5px;}
+    .chatMsg{font-size:13.5px; padding:10px 13px;}
+    .chatLabel{font-size:10px;}
+    .chatInput{font-size:13px; padding:10px 12px;}
+    .lensChip{font-size:9px; padding:5px 10px;}
+    .chatSend{align-self:stretch; text-align:center;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none !important; transition:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<div id="ambient"></div>
+
+<div id="fieldScreen" class="visible">
+  <div class="fieldHeader">
+    <h2>Tap your star.</h2>
+  </div>
+  <div id="skyWrap">
+    <svg id="lines"></svg>
+    <div class="centerStar">
+      <div class="centerDot"></div>
+    </div>
+  </div>
+</div>
+
+
+<div id="answerScreen">
+  <div class="answerInner">
+    <button class="answerBack" id="answerBack">← back to the sky</button>
+    <div class="answerTitle" id="answerTitle"></div>
+    <div class="answerVoice" id="answerVoice"></div>
+
+    <div class="lensPointer">↓ click any of this to get perspective</div>
+    <div class="lensStrip">
+      <button class="lensChip ordinary" data-lens="selfhelp">Self Help</button>
+      <button class="lensChip scientific" data-lens="psychology">Psychology</button>
+      <button class="lensChip quantum" data-lens="quantum">Quantum Physics</button>
+      <button class="lensChip spiritual" data-lens="spiritual">Spiritual</button>
+    </div>
+    <div class="lensAnswer" id="lensAnswer"></div>
+
+    <div class="landingChatWrap">
+      <div class="chatLabel">talk it through</div>
+      <div class="chatMessages" id="landingChatMessages"></div>
+      <div class="chatInputRow">
+        <textarea class="chatInput" id="landingChatInput" rows="1" placeholder="Say what's on your mind..."></textarea>
+        <button class="chatSend" id="landingChatSend">send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ambient background stars
+const ambient = document.getElementById('ambient');
+for(let i=0;i<60;i++){
+  const s = document.createElement('span');
+  s.style.left = Math.random()*100+'%';
+  s.style.top = Math.random()*100+'%';
+  s.style.animationDelay = (Math.random()*4)+'s';
+  ambient.appendChild(s);
+}
+
+const skyLight = [
+  {
+    name:"Faith",
+    voice:"Faith is trusting something is true or good, even when you can't see proof of it yet. Some find this through religion. Some just trust life will work out. Either way, it's a way of carrying hope through the unclear parts.",
+    lenses:{
+      selfhelp:"Keep going. You don't need proof yet — just let the small belief in you carry the next step.",
+      psychology:"Hold onto that belief. It's not weakness — people who keep believing through hard seasons come out stronger, not weaker.",
+      spiritual:"Rest for a moment. You are not carrying this alone — something greater is already holding what you can't see.",
+      quantum:"Even scientists can't predict exactly what one tiny particle will do next — only the odds. Let that be permission to trust, too, before you can see how it turns out."
+    }
+  },
+  {
+    name:"Persistence",
+    voice:"Persistence means keeping at something even when it's slow, boring, or hard. It's not flashy. It's just showing up again tomorrow, one ordinary day at a time.",
+    lenses:{
+      selfhelp:"Do it anyway. Future you will thank you for the small effort you make right now, even if it doesn't feel like much.",
+      psychology:"Keep building your grit. It matters more than talent — every day you stick with it, you prove something to yourself.",
+      spiritual:"Let each step be your faith in motion. Every day you continue is proof you believe in where you're headed.",
+      quantum:"Tiny particles sometimes pass straight through walls that should stop them completely, just by showing up again and again. Keep pushing — you may get through in a way you can't predict yet."
+    }
+  },
+  {
+    name:"On Giving Up",
+    voice:"There are moments a goal or a dream feels like the only thing worth quitting. This is about effort — trying one more time on the thing you're building, not about staying anywhere that's hurting you. If something or someone is hurting you, walking away is strength, not giving up.",
+    lenses:{
+      selfhelp:"Try once more on the thing you're working toward. You've thought about quitting before, and you're still here — let that mean something.",
+      psychology:"Don't stop now, on the goal you're chasing. Breakthroughs almost always come right after the hardest stretch — don't quit right before the shift.",
+      spiritual:"Let this be the last test before things move. Your continued effort is already its own kind of prayer.",
+      quantum:"Until it's measured, a tiny particle holds every possible outcome at once. Your story isn't decided yet either — don't collapse into giving up before it finishes."
+    }
+  },
+  {
+    name:"Forgiveness",
+    voice:"Forgiveness means releasing the weight of what someone did, not excusing it and not owing them anything more. It's often done more for the one carrying the grudge than anyone else.",
+    lenses:{
+      selfhelp:"Set it down. You don't owe them your peace forever — take it back for yourself.",
+      psychology:"Let it go. Holding onto resentment costs the one holding it more than the one who caused it — forgiving frees up weight you didn't know you were carrying.",
+      spiritual:"Release them, and release yourself in the same breath. Grace was never meant to be carried alone.",
+      quantum:"Two things once connected can still tug at each other from a distance, invisibly, until something breaks the link. Forgiveness is how you cut that invisible thread."
+    }
+  },
+  {
+    name:"Acceptance",
+    voice:"Acceptance means making peace with something you can't change, instead of fighting it forever. It doesn't mean giving up — it means putting your energy where it can actually help.",
+    lenses:{
+      selfhelp:"Work with what's true right now, not what you wish were true. That shift alone will lighten what you're carrying.",
+      psychology:"Accept the hard thing instead of resisting it. It will lower your stress and free you to think clearly again.",
+      spiritual:"Let your peace begin the moment you stop fighting what already is. It's allowed to start today.",
+      quantum:"Even physics admits some things can't be pinned down exactly, no matter how hard you look. You don't have to have every answer either — some uncertainty is allowed."
+    }
+  },
+  {
+    name:"Gratitude",
+    voice:"Gratitude is noticing what's already good, even in a hard season. It doesn't erase the hard part — it just makes room for both to be true at once.",
+    lenses:{
+      selfhelp:"Notice something good today, even if it's small. Let yourself have that moment without rushing past it.",
+      psychology:"Keep practicing gratitude. It will lift your mood and steady you more than you expect, over time.",
+      spiritual:"Let gratitude open the door. What you give thanks for has a way of making more room for itself.",
+      quantum:"Every atom in your body was forged inside a star, billions of years ago, and somehow ended up here as you. Something got you this far — that alone is worth noticing."
+    }
+  },
+  {
+    name:"Detachment",
+    voice:"Detachment means caring about something without needing to control the outcome. It's letting go of the grip, not the care.",
+    lenses:{
+      selfhelp:"Keep caring, but stop white-knuckling the outcome. You'll feel the difference the moment you let go.",
+      psychology:"Let go of what's outside your hands. So much of your stress will ease the moment you stop trying to control it.",
+      spiritual:"Release your grip. Trust that something bigger is already holding what you're afraid to let go of.",
+      quantum:"Watching something too closely can change the very thing you're watching. Step back a little, and let it move on its own."
+    }
+  },
+  {
+    name:"Success",
+    voice:"Success means different things to different people — money, peace, family, finishing what you started. Some chase it hard. Some redefine what it means to them along the way.",
+    lenses:{
+      selfhelp:"Keep working toward it. One day you'll look back and see how far you came, even on the days it didn't feel like progress.",
+      psychology:"Set your own terms. Stop comparing — it will only slow you down and steal what you've already earned.",
+      spiritual:"Let peace be your measure. You are already more successful than you're giving yourself credit for.",
+      quantum:"The way you watch something can change what it does — that's true down at the smallest scale of matter. Watch your own path with more kindness, and it may shift too."
+    }
+  }
+];
+
+let threads = skyLight; // The Stars is now just this one sky.
+
+const wrap = document.getElementById('skyWrap');
+const svg = document.getElementById('lines');
+const answerScreen = document.getElementById('answerScreen');
+const answerTitle = document.getElementById('answerTitle');
+const answerVoice = document.getElementById('answerVoice');
+const answerBack = document.getElementById('answerBack');
+
+let starEls = [];
+let lineEls = [];
+
+function layoutStars(){
+  const w = wrap.clientWidth;
+  const h = wrap.clientHeight;
+  const cx = w/2, cy = h/2;
+  const radiusX = w*0.36;
+  const radiusY = h*0.34;
+
+  svg.innerHTML = '';
+  starEls.forEach(el => el.remove());
+  starEls = [];
+  lineEls = [];
+
+  threads.forEach((t, i) => {
+    const angle = (i / threads.length) * Math.PI * 2 - Math.PI/2;
+    const jitter = (i % 2 === 0 ? 1 : -1) * 14;
+    const x = cx + Math.cos(angle) * (radiusX + jitter);
+    const y = cy + Math.sin(angle) * (radiusY + jitter*0.6);
+    const dist = Math.hypot(x-cx, y-cy);
+
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1', cx); line.setAttribute('y1', cy);
+    line.setAttribute('x2', x); line.setAttribute('y2', y);
+    line.style.strokeDasharray = dist;
+    line.style.strokeDashoffset = dist;
+    line.style.transition = 'stroke-dashoffset 0.7s ease-out';
+    svg.appendChild(line);
+    lineEls.push(line);
+
+    const star = document.createElement('div');
+    star.className = 'star';
+    star.style.left = x+'px';
+    star.style.top = y+'px';
+    star.innerHTML = `<div class="starDot" style="animation-delay:${(i*0.6)}s"></div><div class="starName">${t.name}</div>`;
+    star.addEventListener('click', () => openPanel(i, star));
+    wrap.appendChild(star);
+    starEls.push(star);
+
+    const delay = 350 + i * 140;
+    setTimeout(() => {
+      line.style.strokeDashoffset = '0';
+    }, delay);
+    setTimeout(() => {
+      star.querySelector('.starName').classList.add('revealed');
+    }, delay + 650);
+  });
+}
+
+function openPanel(i, starEl){
+  starEls.forEach(s => s.classList.remove('active'));
+  lineEls.forEach(l => l.classList.remove('activeLine'));
+  starEl.classList.add('active');
+  lineEls[i].style.strokeDasharray = '';
+  lineEls[i].style.strokeDashoffset = '';
+  lineEls[i].classList.add('activeLine');
+
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+  starEl.style.left = (w/2)+'px';
+  starEl.style.top = (h/2)+'px';
+  starEl.classList.add('dropping');
+
+  setTimeout(() => {
+    openAnswer(threads[i]);
+  }, 950);
+}
+
+const consciousnessThread = {
+  name:"You",
+  voice:"This one isn't about a topic — it's about the person reading it. Whoever you are, whatever brought you here tonight, you're the one standing at the center of all of this.",
+  lenses:{
+    selfhelp:"You are here, still standing, still trying. Give yourself credit for that — it's not nothing.",
+    psychology:"Keep showing up for yourself. The simple act of noticing your own state is the first step toward changing it.",
+    spiritual:"You are not separate from what's holding everything else together. Rest in that, even for a moment.",
+    quantum:"Some physicists believe the act of observing changes what's being observed. You watching your own life on purpose may shape it too."
+  }
+};
+
+const centerDot = document.querySelector('.centerDot');
+centerDot.style.pointerEvents = 'auto';
+centerDot.style.cursor = 'pointer';
+centerDot.addEventListener('click', () => {
+  starEls.forEach(s => s.classList.remove('active'));
+  lineEls.forEach(l => l.classList.remove('activeLine'));
+  openAnswer(consciousnessThread);
+});
+
+function openAnswer(thread){
+  answerTitle.textContent = thread.name;
+  answerVoice.textContent = thread.voice;
+  answerScreen.classList.add('open');
+  window.scrollTo({top:0, behavior:'auto'});
+  resetChat(thread);
+  setupLenses(thread);
+}
+
+/* ---------- LENSES ---------- */
+const lensAnswer = document.getElementById('lensAnswer');
+const lensChips = document.querySelectorAll('.lensChip');
+
+function setupLenses(thread){
+  lensChips.forEach(c => c.classList.remove('active'));
+  lensAnswer.textContent = '';
+}
+
+lensChips.forEach(chip => {
+  chip.addEventListener('click', () => {
+    lensChips.forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    const lens = chip.getAttribute('data-lens');
+    lensAnswer.textContent = currentThread.lenses[lens];
+  });
+});
+
+/* ---------- CHAT ---------- */
+const landingChatMessages = document.getElementById('landingChatMessages');
+const landingChatInput = document.getElementById('landingChatInput');
+const landingChatSend = document.getElementById('landingChatSend');
+let landingChatHistory = [];
+let currentThread = null;
+
+function resetChat(thread){
+  currentThread = thread;
+  landingChatHistory = [];
+  landingChatMessages.innerHTML = '';
+  landingChatInput.value = '';
+}
+
+function renderLandingMessage(role, text){
+  const el = document.createElement('div');
+  el.className = 'chatMsg ' + role;
+  el.textContent = text;
+  landingChatMessages.appendChild(el);
+  landingChatMessages.scrollTop = landingChatMessages.scrollHeight;
+  return el;
+}
+
+async function sendLandingChat(){
+  const text = landingChatInput.value.trim();
+  if(!text) return;
+  landingChatInput.value = '';
+  landingChatSend.disabled = true;
+
+  renderLandingMessage('user', text);
+  landingChatHistory.push({ role:'user', content:text });
+
+  const thinkingEl = renderLandingMessage('thinking assistant', '...');
+
+  const t = currentThread;
+  const systemPrompt = `You are a warm, steady, encouraging companion inside a small website called "The Stars." The site offers short words of encouragement — Faith, Persistence, Acceptance, Gratitude, and things like that. The person just picked "${t.name}". Here's how it's introduced to them: "${t.voice}"
+
+How to talk: Speak directly TO the person, using "you," not about the topic in the abstract. Never define what the word means — encourage them to actually live it, right now, in their situation. Use short, plain sentences, 6th-grade reading level. Be warm and steady, never preachy or like a sermon. Keep replies SHORT, 2 to 4 sentences. Ask at most one gentle question if it helps them open up about what they're facing. Never lecture or moralize — just encourage, plainly and warmly, like someone who believes in them.
+
+CRITICAL SAFETY RULE — this always overrides the encouragement above: If the person describes being hurt, threatened, controlled, or made unsafe by another person (including a partner, family member, or anyone else), NEVER encourage them to "stay," "keep trying," "not give up" on that relationship, or "have faith it improves." Leaving harm is strength, not giving up. In that moment, gently affirm their safety and worth, and encourage them to reach out to someone they trust or a local support service. If they describe being in immediate danger or having thoughts of harming themselves, stay calm, take it seriously, and encourage them to contact a crisis line or emergency services right away.
+
+One more distinction to hold, gently: ordinary difficulty is not the same as harm. A hard job, a demanding season, a relationship that takes real work but is fundamentally safe and respectful — these are things worth encouraging someone to keep working through, not things to walk away from at the first sign of struggle. The line isn't about how upset someone sounds — it's about whether what they're describing involves being controlled, threatened, hurt, or made afraid by another person. If what they describe sounds like ordinary hardship, encourage them the normal way. If it sounds like real harm, safety comes first, always. Never doubt or question someone who tells you they're being hurt — take it seriously every time. The care here is in telling "hard" and "harmful" apart, not in deciding whether to believe them.`;
+
+  try{
+    const response = await fetch("/.netlify/functions/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: landingChatHistory
+      })
+    });
+    const data = await response.json();
+
+    if(!response.ok){
+      thinkingEl.remove();
+      const errMsg = (data && data.error && (data.error.message || JSON.stringify(data.error))) || JSON.stringify(data);
+      renderLandingMessage('assistant', `[DEBUG ${response.status}] ${errMsg}`);
+      landingChatSend.disabled = false;
+      return;
+    }
+
+    const replyText = (data.content || [])
+      .map(block => block.type === 'text' ? block.text : '')
+      .filter(Boolean)
+      .join('\n')
+      .trim() || "Hmm, lost that thought — try again?";
+    thinkingEl.remove();
+    renderLandingMessage('assistant', replyText);
+    landingChatHistory.push({ role:'assistant', content:replyText });
+  }catch(err){
+    thinkingEl.remove();
+    renderLandingMessage('assistant', "Couldn't reach the sky just now — try again in a moment.");
+  }
+  landingChatSend.disabled = false;
+  landingChatInput.focus();
+}
+
+landingChatSend.addEventListener('click', sendLandingChat);
+landingChatInput.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter' && !e.shiftKey){
+    e.preventDefault();
+    sendLandingChat();
+  }
+});
+
+answerBack.addEventListener('click', () => {
+  answerScreen.classList.remove('open');
+  lineEls.forEach(l => l.classList.remove('activeLine'));
+  starEls.forEach(s => s.classList.remove('active', 'dropping'));
+  layoutStars();
+  landingChatMessages.innerHTML = '';
+  landingChatHistory = [];
+});
+
+window.addEventListener('resize', layoutStars);
+
+layoutStars();
+</script>
+
+</body>
+</html>
